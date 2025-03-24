@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <ESP32ServoControllerlib.h>
+#include <ESP32ServoController.h>
 
 using namespace MDO::ESP32ServoController;
 
