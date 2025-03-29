@@ -6,7 +6,7 @@ Please see the UML in the [documentation page](https://github.com/mjdonders/ESP3
 The LEDC architecture requires a timer (for the frequency) and a channel (for the duty cycle).
 The combination of these are used in [PWMController](#PWMController) and the [ServoController](#ServoController).
 
-Typically, there are a (very) limited amount timers. This library therefore has several options for timer sharing.
+Typically, there are a (very) limited amount timers. This library therefore has several options for (automatic) timer sharing.
 
 ## Usage
 _Esp32LedcRegistry_ is a singleton used to register (/keep track of) the hardware platform capabilities.
@@ -36,7 +36,8 @@ The main examples are:
  - *ServoController*, demonstrating a basic servo setup. Please read the comments near `setServoParams` **carefully**. By default the _Esp32LedcRegistry_ will use 1 - 2 msec for 0 to 180 degrees.
 
 (the **carefully** hint to physical servo damage which might occur based on wrong timing. Please check the relevant datasheet)
- 
+
+
 In addition, there are two additional 'examples'. These are mainly used for my test purposes, 'test suite' is therefore a better description.
 These 'examples' might provide some additional clarification, but these are not really meant for that..
  - *PwmErrorHandlingTest_ESP32*, is a test suite for a ESP32 setup (LilyGo T-Display)
