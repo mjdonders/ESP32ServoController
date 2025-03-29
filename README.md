@@ -40,4 +40,5 @@ In addition, there are two additional 'examples'. These are mainly used for my t
 These 'examples' might provide some additional clarification, but these are not really meant for that..
  - *PwmErrorHandlingTest_ESP32*, is a test suite for a ESP32 setup (LilyGo T-Display)
  - *PwmErrorHandlingTest_ESP32_S3*, is a test suite for a ESP32-S3 (LilyGo T-Display-S3)
- I've compiled it for each ESP32 type found in the Esp32LedcRegistry comments, but have tested it only in the above two setup's.
+
+I've compiled it for each ESP32 type found in the Esp32LedcRegistry comments, but have tested it only in the above two setup's.
