@@ -34,6 +34,7 @@ The main examples are:
  - *PwmController*, which demonstrates a basic PWM setup.
  - *PwmControllerShared*, which demonstrates a (library manager) timer-share. 
  - *ServoController*, demonstrating a basic servo setup. Please read the comments near `setServoParams` **carefully**. By default the _Esp32LedcRegistry_ will use 1 - 2 msec for 0 to 180 degrees.
+
 (the **carefully** hint to physical servo damage which might occur based on wrong timing. Please check the relevant datasheet)
  
 In addition, there are two additional 'examples'. These are mainly used for my test purposes, 'test suite' is therefore a better description.
