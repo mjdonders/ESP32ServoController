@@ -8,6 +8,7 @@ namespace MDO {
 namespace ESP32ServoController {
 
 /**
+ * A factory, able to make a timer and a channel, with the strategy of:
  * Only creates Ledc Timers and Channels from the HighSpeed type.
  * The clock source defaults to FAST_CLOCK_SOURCE_APB_CLK
  * This will obviously only work for supported hardware.

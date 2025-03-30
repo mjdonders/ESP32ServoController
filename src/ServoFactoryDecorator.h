@@ -9,7 +9,8 @@ namespace ESP32ServoController {
 class ServoController;
 
 /**
- * 
+ * A timer and channel factory specifically for a ServoController.
+ * (easier to use compared to the normal Factory types based on defaults retrieved from Esp32LedcRegistry)
  */ 
 class ServoFactoryDecorator {
 	
@@ -20,10 +21,6 @@ class ServoFactoryDecorator {
 	private:
 	
 	public:
-		//virtual ledc_mode_t						getAlternativeSpeedMode() const override;
-		//virtual bool							supportAlternativeSpeedMode() const override;
-		//virtual ledc_mode_t						getDefaultSpeedMode() const override;
-		
 		virtual std::shared_ptr<LedcTimer>		createTimer(uint8_t uiResolutionBits = 0) const;
 		virtual std::shared_ptr<LedcChannel>	createChannel(int iPinNr, ServoController* pServoController, double dDuty, bool bInvertOutput = false) const;	
 

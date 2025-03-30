@@ -3,13 +3,22 @@
 
 using namespace MDO::ESP32ServoController;
 
+void printEsp32LedcRegistryUsage() {
+	const Esp32LedcRegistry* pRegistry = Esp32LedcRegistry::instance();
+	//report the amount of timers used, that should be 1 out of 4 on the tested ESP32 S3
+	Serial.println("Esp32LedcRegistry reports:");
+	Serial.println(String("  ") + pRegistry->timerUsageToString());
+	Serial.println(String("  ") + pRegistry->channelUsageToString());
+	Serial.println("");
+}
+
 void setup() {
 	Serial.begin(460800);
 	delay(500);
 	Serial.println();
 	Serial.println("Test starting");
 	
-	//configure our main settings in the ESP32 LEDC registry
+	//configure the platform to be used in the ESP32 LEDC registry
 	Esp32LedcRegistry::instance()->begin(LEDC_CONFIG_ESP32);	//change this for the relevant controller
 	
 	{	//ESP32 does support high speed timers
@@ -19,7 +28,7 @@ void setup() {
 			Serial.println("  Failed");
 			return;	//it should have failed
 		}
-		Serial.println("  ESP32 does support high speed timer. Tested OK");
+		Serial.println("  ESP32 supports high speed timers. Tested OK");
 		delay(1000);
 		
 		if (!Esp32LedcRegistry::instance()->isTimerInUse(&oTimer)) {
@@ -252,6 +261,7 @@ void setup() {
 			Serial.println("    Failed. We should have depleted the maximum amount (8) of channels, which should be detected");
 			return;			
 		}
+		Serial.println("  Depleted channel detected. Good.");
 		
 		delay(20000);
 	}
@@ -287,8 +297,8 @@ void setup() {
 		Serial.println("  Stopping both high speed PWM controllers");
 	}
 	
-	
-	
+	Serial.println("");
+	printEsp32LedcRegistryUsage();	//nothing should be 'pending' at this point
 
 	Serial.println("Tests execution: OK");
 }

@@ -7,7 +7,8 @@ namespace MDO {
 namespace ESP32ServoController {
 
 /**
- * 
+ * A high speed version of a Ledc channel.
+ * Only available when the hardware supports this.
  */ 
 class LedcChannelHighSpeed: public LedcChannel {
 	

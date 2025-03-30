@@ -3,6 +3,15 @@
 
 using namespace MDO::ESP32ServoController;
 
+void printEsp32LedcRegistryUsage() {
+	const Esp32LedcRegistry* pRegistry = Esp32LedcRegistry::instance();
+	//report the amount of timers used, that should be 1 out of 4 on the tested ESP32 S3
+	Serial.println("Esp32LedcRegistry reports:");
+	Serial.println(String("  ") + pRegistry->timerUsageToString());
+	Serial.println(String("  ") + pRegistry->channelUsageToString());
+	Serial.println("");
+}
+
 void setup() {
 	Serial.begin(460800);
 	delay(500);
@@ -85,7 +94,8 @@ void setup() {
 		}
 		Serial.println("  PWM started");
 		delay(5000);
-		const uint8_t uiPinNr2 = 46;
+		const uint8_t uiPinNr2 = 44;	//handy for the T-Display-S3
+		//const uint8_t uiPinNr2 = 46;	//handy for the T-Display S3 AMOLED
 		if (!oChannel.addPin(uiPinNr2)) {
 			Serial.println("Failed to add the second pin");
 			return;
@@ -165,7 +175,8 @@ void setup() {
 	{
 		Serial.println("Checking two channels with just one timer: ");
 		const uint8_t 	uiPinNr1 = 16;
-		const uint8_t	uiPinNr2 = 46;
+		const uint8_t	uiPinNr2 = 44;	//handy for the T-Display-S3
+		//const uint8_t	uiPinNr2 = 46;	//handy for the T-Display S3 AMOLED
 		const uint32_t	uiFreqHz = 1500;
 		const double	dDuty1 = 0.06;
 		const double	dDuty2 = 0.24;
@@ -198,7 +209,8 @@ void setup() {
 	{
 		Serial.println("Checking servo functionality: ");
 		const uint8_t 	uiPinNr1 = 16;
-		const uint8_t	uiPinNr2 = 46;
+		const uint8_t	uiPinNr2 = 44;	//handy for the T-Display-S3
+		//const uint8_t	uiPinNr2 = 46;	//handy for the T-Display S3 AMOLED
 		LowSpeedFactory oTimerChannelFactory;							//lets create a new low speed timer & channel
 		ServoFactoryDecorator oFactoryDecorator(oTimerChannelFactory);	//let this ServoFactoryDecorator define the frequency to use and such
 		ServoController oServo1;
@@ -231,7 +243,8 @@ void setup() {
 		
 		BestAvailableFactory oFactory;
 		PWMController oPwms[8];											//so 8 is the EPS32 S3 value, this might not be a good plan on other controllers..
-		const uint8_t uiPins[8] = {16,15,14,13,12,11,10,46};
+		const uint8_t uiPins[8] = {16,15,14,13,12,11,10,43};	//handy for the T-Display-S3
+		//const uint8_t uiPins[8] = {16,15,14,13,12,11,10,46};	//handy for the T-Display S3 AMOLED
 		if (!oPwms[0].begin(oFactory, uiPins[0], uiFreqHz, dDuty1)) {
 			Serial.println("  Failed to create initial PWM Controller");
 			return;
@@ -250,12 +263,13 @@ void setup() {
 			Serial.println("    Failed. We should have depleted the maximum amount (8) of channels, which should be detected");
 			return;			
 		}
+		Serial.println("  Depleted channel detected. Good.");
 		
 		delay(20000);
 	}
 	
-	
-	
+	Serial.println("");
+	printEsp32LedcRegistryUsage();	//nothing should be 'pending' at this point
 
 	Serial.println("Tests execution: OK");
 }

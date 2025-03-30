@@ -15,35 +15,50 @@ namespace ESP32ServoController {
 
 Esp32LedcRegistry* Esp32LedcRegistry::m_pSingleton = nullptr;
 
+//private
+std::shared_ptr<LedcTimer> Esp32LedcRegistry::findTimerIn(const pwmcontroller_t* pPwmControllers, uint32_t uiFreqHz) const {
+	std::shared_ptr<LedcTimer> pRet;
+	if (pPwmControllers != nullptr) {
+		for (auto cit = pPwmControllers->begin(); cit != pPwmControllers->end(); cit++) {
+			std::shared_ptr<LedcTimer> pOption = (*cit)->getTimer();
+			if ((pOption != nullptr) && (pOption->getFrequency() == uiFreqHz)) {
+				pRet = pOption;
+				break;
+			}
+		}		
+	}
+	
+	return pRet;
+}
+
 /**
- * Searches through our registry to see if there already is a timer for the provided frequency and speed mode
+ * Searches through our registry to see if there already is a timer for the provided frequency and speed mode for a PWM Controller
  * Providing no speed mode means 'search all options' (from a speed mode point of view)
  * return either a timer pointer when a hit is found, or nullptr
  */
-//const LedcTimer* Esp32LedcRegistry::hasTimerFor(uint32_t uiFreqHz, ledc_mode_t eSpeedMode /*= LEDC_SPEED_MODE_MAX*/) const {
-/*	const LedcTimer* pTimerFound = nullptr;
+std::shared_ptr<LedcTimer> Esp32LedcRegistry::hasTimerForPwm(uint32_t uiFreqHz, ledc_mode_t eSpeedMode /*= LEDC_SPEED_MODE_MAX*/) const {
+
+	std::shared_ptr<LedcTimer> pRet;
+	
+	const pwmcontroller_t* pPwmControllers = nullptr;	
 #if SOC_LEDC_SUPPORT_HS_MODE
 	if ((eSpeedMode == LEDC_SPEED_MODE_MAX) || (eSpeedMode == LEDC_HIGH_SPEED_MODE)) {
-		for (auto cit = m_sPwmControllers.sHighSpeed.mTimers.begin(); cit != m_sPwmControllers.sHighSpeed.mTimers.end(); cit++) {
-			if ((cit->second != nullptr) && (cit->second->getFrequency() == uiFreqHz)) {
-				pTimerFound = cit->second;
-				return pTimerFound;
-			}
-		}
+		pPwmControllers = &m_sPwmControllers.sHighSpeed.vPwmControllers;
+		pRet = findTimerIn(pPwmControllers, uiFreqHz);
 	}
-#endif	
+#endif
+
+	if (pRet != nullptr) {
+		return pRet;
+	}
 
 	if ((eSpeedMode == LEDC_SPEED_MODE_MAX) || (eSpeedMode == LEDC_LOW_SPEED_MODE)) {
-		for (auto cit = m_sPwmControllers.sLowSpeed.mTimers.begin(); cit != m_sPwmControllers.sLowSpeed.mTimers.end(); cit++) {
-			if ((cit->second != nullptr) && (cit->second->getFrequency() == uiFreqHz)) {
-				pTimerFound = cit->second;
-				return pTimerFound;
-			}
-		}		
-	}	
+		pPwmControllers = &m_sPwmControllers.sLowSpeed.vPwmControllers;
+		pRet = findTimerIn(pPwmControllers, uiFreqHz);
+	}
 	
-	return pTimerFound;
-}*/
+	return pRet;
+}
 
 const ServoController* Esp32LedcRegistry::getServoUsing(uint32_t uiFreqHz, ledc_mode_t eSpeedMode) const {
 	
@@ -90,20 +105,23 @@ void Esp32LedcRegistry::unregisterTimer(const LedcTimer* pTimer) {
 	if (pTimer == nullptr) {
 		return;
 	}
+	
+	ledc_mode_t eSpeedMode = pTimer->getSpeedMode();
+	if (eSpeedMode == LEDC_SPEED_MODE_MAX) {
+		return;
+	}
+	
+	timers_t* pTimers = nullptr;	
 	if (pTimer->getSpeedMode() == LEDC_LOW_SPEED_MODE) {
-		auto it = m_sPwmControllers.sLowSpeed.mTimers.find(pTimer->getTimerNr());
-		if (it != m_sPwmControllers.sLowSpeed.mTimers.end()) {
-			//MDO_SERVO_DEBUG_PRINTLN("Unregistering low speed timer");
-			it->second = nullptr;	//ensure the pointer does not get deleted
-			m_sPwmControllers.sLowSpeed.mTimers.erase(it);
-		}
+		pTimers = &m_sPwmControllers.sLowSpeed.mTimers;
 	} else {
-		auto it = m_sPwmControllers.sHighSpeed.mTimers.find(pTimer->getTimerNr());
-		if (it != m_sPwmControllers.sHighSpeed.mTimers.end()) {
-			//MDO_SERVO_DEBUG_PRINTLN("Unregistering high speed timer");
-			it->second = nullptr;	//ensure the pointer does not get deleted
-			m_sPwmControllers.sHighSpeed.mTimers.erase(it);
-		}
+		pTimers = &m_sPwmControllers.sHighSpeed.mTimers;
+	}
+	
+	auto it = pTimers->find(pTimer->getTimerNr());
+	if (it != pTimers->end()) {
+		it->second = nullptr;	//ensure the pointer does not get deleted
+		pTimers->erase(it);
 	}
 }
 
@@ -124,20 +142,64 @@ bool Esp32LedcRegistry::registerChannel(const LedcChannel* pChannel) {
  */
 void Esp32LedcRegistry::unregisterChannel(const LedcChannel* pChannel) {
 	if (pChannel == nullptr) {
-		MDO_SERVO_DEBUG_PRINTLN("Ignore unregisterChannel");
 		return;
 	}
-	if (pChannel->getSpeedMode() == LEDC_LOW_SPEED_MODE) {
-		auto it = m_sPwmControllers.sLowSpeed.mChannels.find(pChannel->getChannelNr());
-		if (it != m_sPwmControllers.sLowSpeed.mChannels.end()) {
-			it->second = nullptr;	//ensure the pointer does not get deleted
-			m_sPwmControllers.sLowSpeed.mChannels.erase(it);
-		}
+	
+	ledc_mode_t eSpeedMode = pChannel->getSpeedMode();
+	if (eSpeedMode == LEDC_SPEED_MODE_MAX) {
+		return;
+	}
+	
+	channels_t* pChannels = nullptr;
+	if (eSpeedMode == LEDC_LOW_SPEED_MODE) {
+		pChannels = &m_sPwmControllers.sLowSpeed.mChannels;
 	} else {
-		auto it = m_sPwmControllers.sHighSpeed.mChannels.find(pChannel->getChannelNr());
-		if (it != m_sPwmControllers.sHighSpeed.mChannels.end()) {
-			it->second = nullptr;	//ensure the pointer does not get deleted
-			m_sPwmControllers.sHighSpeed.mChannels.erase(it);
+		pChannels = &m_sPwmControllers.sHighSpeed.mChannels;
+	}
+	
+	auto it = pChannels->find(pChannel->getChannelNr());
+	if (it !=pChannels->end()) {
+		it->second = nullptr;	//ensure the pointer does not get deleted
+		pChannels->erase(it);
+	}	
+}
+
+bool Esp32LedcRegistry::registerPwmController(const PWMController* pPwmController) {
+	if (pPwmController == nullptr) {
+		return false;
+	}
+	ledc_mode_t eSpeedMode = pPwmController->getSpeedMode();
+	if (eSpeedMode == LEDC_SPEED_MODE_MAX) {
+		return false;
+	}
+	if (eSpeedMode == LEDC_LOW_SPEED_MODE) {
+		m_sPwmControllers.sLowSpeed.vPwmControllers.push_back(pPwmController);
+	} else {
+		m_sPwmControllers.sHighSpeed.vPwmControllers.push_back(pPwmController);
+	}
+	return true;
+}
+
+void Esp32LedcRegistry::unregisterPwmController(const PWMController* pPwmController) {
+	if (pPwmController == nullptr) {
+		return;
+	}
+	ledc_mode_t eSpeedMode = pPwmController->getSpeedMode();
+	if (eSpeedMode == LEDC_SPEED_MODE_MAX) {
+		return;
+	}
+	
+	pwmcontroller_t* pPwmControllers = nullptr;	
+	if (eSpeedMode == LEDC_LOW_SPEED_MODE) {
+		pPwmControllers = &m_sPwmControllers.sLowSpeed.vPwmControllers;
+	} else {
+		pPwmControllers = &m_sPwmControllers.sHighSpeed.vPwmControllers;
+	}
+	
+	for (auto it = pPwmControllers->begin(); it != pPwmControllers->end(); it++) {
+		if (pPwmController == *it) {	//if the same pointer
+			pPwmControllers->erase(it);
+			return;						//we're done
 		}
 	}
 }
@@ -147,7 +209,12 @@ bool Esp32LedcRegistry::registerServo(const ServoController* pServo) {
 		MDO_SERVO_DEBUG_PRINTLN("Ignore registerServo");
 		return false;
 	}
-	if (pServo->getSpeedMode() == LEDC_LOW_SPEED_MODE) {
+	ledc_mode_t eSpeedMode = pServo->getSpeedMode();
+	if (eSpeedMode == LEDC_SPEED_MODE_MAX) {
+		return false;
+	}
+	
+	if (eSpeedMode == LEDC_LOW_SPEED_MODE) {
 		m_sServoControllers.sLowSpeed[pServo->getId()] = pServo;
 	} else {
 		m_sServoControllers.sHighSpeed[pServo->getId()] = pServo;
@@ -161,19 +228,20 @@ void Esp32LedcRegistry::unregisterServo(const ServoController* pServo) {
 		//this does not always indicate an error, so just ignore
 		return;
 	}
+	
+	servos_t* pServos = nullptr;	
 	if (pServo->getSpeedMode() == LEDC_LOW_SPEED_MODE) {
-		auto it = m_sServoControllers.sLowSpeed.find(pServo->getId());
-		if (it != m_sServoControllers.sLowSpeed.end()) {
-			it->second = nullptr;	//ensure the pointer does not get deleted
-			m_sServoControllers.sLowSpeed.erase(it);
-		}
+		pServos = &m_sServoControllers.sLowSpeed;
 	} else {
-		auto it = m_sServoControllers.sHighSpeed.find(pServo->getId());
-		if (it != m_sServoControllers.sHighSpeed.end()) {
-			it->second = nullptr;	//ensure the pointer does not get deleted
-			m_sServoControllers.sHighSpeed.erase(it);
-		}
-	}	
+		pServos = &m_sServoControllers.sHighSpeed;
+	}
+
+	auto it = pServos->find(pServo->getId());
+	if (it != pServos->end()) {
+		it->second = nullptr;	//ensure the pointer does not get deleted
+		pServos->erase(it);
+	}
+	
 }
 
 void Esp32LedcRegistry::setHardwareFadeEnabled() {
@@ -194,6 +262,61 @@ bool Esp32LedcRegistry::isClockSourceFixed(uint8_t& uiClockSourceOutput) const {
 	
 	return bIsClockSourceFixed;
 }*/
+
+
+/**
+ * Fore debug purposes, provides an overview of the channel usage
+ */
+String Esp32LedcRegistry::channelUsageToString() const {
+	String strRet;
+	bool bHasHighSpeedCapabilities = false;
+#if SOC_LEDC_SUPPORT_HS_MODE
+	if (getNrOfHighSpeedTimers() != 0) {
+		bHasHighSpeedCapabilities = true;
+		strRet += String("High speed channel usage: ") + getCurrentNrOfChannelsInUse(LEDC_HIGH_SPEED_MODE) + " / " + getNrOfHighSpeedChannels() + ", ";			
+	}
+#endif
+
+	if (bHasHighSpeedCapabilities) {
+		strRet += String("Low speed channel usage: ") + getCurrentNrOfChannelsInUse(LEDC_LOW_SPEED_MODE) + " / " + getNrOfLowSpeedChannels();
+	} else {
+		strRet += String("Channel usage: ") + getCurrentNrOfChannelsInUse(LEDC_LOW_SPEED_MODE) + " / " + getNrOfLowSpeedChannels();
+	}
+
+	return strRet;
+}
+
+/**
+ * Fore debug purposes, provides an overview of the timer usage
+ */
+String Esp32LedcRegistry::timerUsageToString() const {
+	String strRet;
+	bool bHasHighSpeedCapabilities = false;
+#if SOC_LEDC_SUPPORT_HS_MODE
+	if (getNrOfHighSpeedTimers() != 0) {
+		bHasHighSpeedCapabilities = true;
+		strRet += String("High speed timer usage: ") + getCurrentNrOfTimersInUse(LEDC_HIGH_SPEED_MODE) + " / " + getNrOfHighSpeedTimers() + ", ";			
+	}
+#endif
+	if (bHasHighSpeedCapabilities) {
+		strRet += String("Low speed timer usage: ") + getCurrentNrOfTimersInUse(LEDC_LOW_SPEED_MODE) + " / " + getNrOfLowSpeedTimers();
+	} else {
+		strRet += String("Timer usage: ") + getCurrentNrOfTimersInUse(LEDC_LOW_SPEED_MODE) + " / " + getNrOfLowSpeedTimers();
+	}
+	
+	return strRet;
+}
+		
+uint8_t Esp32LedcRegistry::getCurrentNrOfChannelsInUse(ledc_mode_t eSpeedMode /*= LEDC_SPEED_MODE_MAX*/) const {
+	uint8_t uiCount = 0;
+	if (eSpeedMode != LEDC_LOW_SPEED_MODE) {
+		uiCount += m_sPwmControllers.sHighSpeed.mChannels.size();
+	}
+	if ((eSpeedMode == LEDC_LOW_SPEED_MODE) || (eSpeedMode == LEDC_SPEED_MODE_MAX)) {
+		uiCount += m_sPwmControllers.sLowSpeed.mChannels.size();
+	}
+	return uiCount;
+}
 
 //gives an answer globally (when eSpeedMode is set to LEDC_SPEED_MODE_MAX), or locally LEDC_LOW_SPEED_MODE / LEDC_HIGH_SPEED_MODE when requested
 uint8_t Esp32LedcRegistry::getCurrentNrOfTimersInUse(ledc_mode_t eSpeedMode /*= LEDC_SPEED_MODE_MAX*/) const {
@@ -336,6 +459,14 @@ uint8_t Esp32LedcRegistry::getNrOfLowSpeedTimers() const {
 
 uint8_t Esp32LedcRegistry::getNrOfSimultaneousClockSources() const {
 	return m_uiNrOfSimultaneousClockSources;
+}
+
+uint8_t Esp32LedcRegistry::getNrOfHighSpeedChannels() const {
+	return (getNrOfHighSpeedTimers() == 0) ? (0) : (getNrOfChannels());
+}
+
+uint8_t Esp32LedcRegistry::getNrOfLowSpeedChannels() const {
+	return getNrOfChannels();
 }
 
 uint8_t Esp32LedcRegistry::getNrOfChannels() const {

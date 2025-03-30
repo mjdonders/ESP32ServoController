@@ -9,7 +9,7 @@ namespace ESP32ServoController {
 class LedcTimer;
 
 /**
- * 
+ * An abstract base class for Ledc channel types
  */ 
 class LedcChannel {
 	

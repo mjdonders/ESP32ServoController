@@ -8,7 +8,7 @@ namespace MDO {
 namespace ESP32ServoController {
 
 /**
- * 
+ * A factory, able to make a timer and a channel, with the strategy of 'provides the best available' (based on hardware capabilities and current usage)
  */ 
 class BestAvailableFactory: public Esp32LedcFactory {
 	

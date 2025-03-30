@@ -9,6 +9,7 @@ namespace ESP32ServoController {
 
 /**
  * A servo controlling class, meant for 180 degree servo's
+ * Has a (sometimes shared) timer and a channel for this purpose, which are created used the provided factory (decorator)
  */ 
 class ServoController: protected PWMController {
 	friend class ServoFactoryDecorator;

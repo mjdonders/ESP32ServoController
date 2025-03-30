@@ -2,6 +2,7 @@
 #define _MDO_PWMController_H
 
 #include "Esp32LedcFactory.h"
+#include "PwmFactoryDecorator.h"
 
 #include <driver/ledc.h>
 #include <memory>
@@ -13,7 +14,8 @@ class LedcTimer;
 class LedcChannel;
 
 /**
- * 
+ * A PWM controller.
+ * Has a (sometimes shared) timer and a channel for this purpose, which are created used the provided factory
  */ 
 class PWMController {
 	friend class PwmFactory;
@@ -41,7 +43,8 @@ class PWMController {
 
 		bool			begin(int iPinNr, const PWMController* pChannelProvider);																			//just adds a pin to an existing channel
 		bool			begin(const Esp32LedcFactory& oFactory, int iPinNr, const PWMController* pTimerProvider, double dDuty, bool bInvertOutput = false);	//start sharing a timer, however uses a new channel
-		bool			begin(const Esp32LedcFactory& oFactory, int iPinNr, uint32_t uiFreqHz, double dDuty, bool bInvertOutput = false);					//uses a new channel, and a new timer
+		bool			begin(const Esp32LedcFactory& oFactory, int iPinNr, uint32_t uiFreqHz, double dDuty, bool bInvertOutput = false);					//uses a new timer, and a new channel
+		bool			begin(const PwmFactoryDecorator& oFactory, int iPinNr, uint32_t uiFreqHz, double dDuty, bool bInvertOutput = false);				//tries to re-use a timer, if not create a new timer, and creates a new channel
 		
 		PWMController();
 		virtual ~PWMController();

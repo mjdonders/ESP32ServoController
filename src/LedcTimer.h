@@ -8,7 +8,7 @@ namespace MDO {
 namespace ESP32ServoController {
 
 /**
- * 
+ * An abstract base class for Ledc timer types
  */ 
 class LedcTimer {
 	

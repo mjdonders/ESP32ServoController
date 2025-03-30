@@ -75,19 +75,6 @@ std::shared_ptr<LedcChannel> PWMController::getChannel() const {
 }
 
 /**
- * Fades to a duty as number, [0, (2**duty_resolution)]. Might be more precise compared to the easier-to-use double in the other fade method.
- * note that the time accuracy can be quite low, depending on the frequency and such. See: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/ledc.html#_CPPv423ledc_set_fade_with_time11ledc_mode_t14ledc_channel_t8uint32_ti
- * bBlocking can be used to make this a blocking method, or not. The controller will not allow a new fade command within the provided iMaxFadeTime_ms.
- */
-//bool PWMController::fade(uint32_t uiDuty, int iMaxFadeTime_ms /*=1*/, bool bBlocking /* = false*/) {
-/*	if (m_spChannel == nullptr) {
-		return false;
-	}
-
-	return m_spChannel->fade(uiDuty, iMaxFadeTime_ms, bBlocking);
-}*/
-
-/**
  * Fades to a duty cycle 'percentage' (from 0 to 1) in the required time
  * note that the time accuracy can be quite low, depending on the frequency and such. See: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/ledc.html#_CPPv423ledc_set_fade_with_time11ledc_mode_t14ledc_channel_t8uint32_ti
  * bBlocking can be used to make this a blocking method, or not. The controller will not allow a new fade command within the provided iMaxFadeTime_ms.
@@ -101,17 +88,18 @@ bool PWMController::fade(double dDuty, int iMaxFadeTime_ms /*=1*/, bool bBlockin
 	int iHighPoint = 0;
 	dutyToInt(dDuty, uiDuty, iHighPoint);
 	return m_spChannel->fade(uiDuty, iMaxFadeTime_ms, bBlocking);
-	//m_pChannel->updateDuty(uiDuty, iHighPoint);
 }
 
-//void PWMController::updateDuty(double dDuty) {
-//}
-
-//just adds a pin to an existing channel
-//keeping this PWMController instance practically empty
+/**
+ * Just adds a pin to an existing channel
+ * Keeping this PWMController instance practically empty
+ *
+ * Please be aware that in my ESP32-S3 setup with esp32 lib 3.1.2 from Espressif, 
+ *	=> if the :begin requested bInvertOutput to be true, the added pin in this method will not be inverted.. ??
+ *  => after this channel is deleted, and a new is created afterwards with just one pin, the pin added here will still get the same output 
+ *		(so no 'full means' to deconfigure a channel without reassiging the pin to something else)
+ */
 bool PWMController::begin(int iPinNr, const PWMController* pChannelProvider) {
-	//m_bTimerIsMine = false;
-	//m_bChannelIsMine = false;
 	m_spTimer = pChannelProvider->getTimer();
 	m_spChannel = pChannelProvider->getChannel();
 	
@@ -119,10 +107,15 @@ bool PWMController::begin(int iPinNr, const PWMController* pChannelProvider) {
 	if (bOk) {
 		bOk = m_spChannel->addPin(iPinNr);
 	}
+	//I don't think that in this scenario we should register this PWMController to the Esp32LedcRegistry..
 	
 	return bOk;
 }	
 
+/**
+ * Initializes a PWMController.
+ * Reuses the timer from the pTimerProvider and creates a new channel
+ */
 bool PWMController::begin(const Esp32LedcFactory& oFactory, int iPinNr, const PWMController* pTimerProvider, double dDuty, bool bInvertOutput /*= false*/) {
 	cleanUp();	//just in case
 
@@ -147,7 +140,9 @@ bool PWMController::begin(const Esp32LedcFactory& oFactory, int iPinNr, const PW
 
 	bool bOk = (m_spTimer != nullptr) && (m_spChannel != nullptr);
 
-	if (!bOk) {
+	if (bOk) {
+		Esp32LedcRegistry::instance()->registerPwmController(this);
+	} else {
 		cleanUp();
 		MDO_SERVO_DEBUG_PRINTLN("PWMController::begin - failed to allocate/configure a timer and/or channel");
 	}
@@ -155,7 +150,10 @@ bool PWMController::begin(const Esp32LedcFactory& oFactory, int iPinNr, const PW
 	return bOk;
 }
 
-//uses a new channel, and maybe a new timer
+/**
+ * Initializes a PWMController.
+ * Create a new timer and creates a new channel
+ */
 bool PWMController::begin(const Esp32LedcFactory& oFactory, int iPinNr, uint32_t uiFreqHz, double dDuty, bool bInvertOutput /*= false*/) {
 	//MDO_SERVO_DEBUG_PRINTLN("PWMController::begin");
 	
@@ -177,7 +175,9 @@ bool PWMController::begin(const Esp32LedcFactory& oFactory, int iPinNr, uint32_t
 	
 	bool bOk = (m_spTimer != nullptr) && (m_spChannel != nullptr);
 
-	if (!bOk) {
+	if (bOk) {
+		Esp32LedcRegistry::instance()->registerPwmController(this);
+	} else {
 		cleanUp();
 		MDO_SERVO_DEBUG_PRINTLN("PWMController::begin - failed to allocate/configure a timer and/or channel");
 	}
@@ -185,11 +185,48 @@ bool PWMController::begin(const Esp32LedcFactory& oFactory, int iPinNr, uint32_t
 	return bOk;
 }
 
-PWMController::PWMController() {	//ledc_mode_t eSpeedMode) {
-	//m_eSpeedMode = eSpeedMode;
+/**
+ * Initializes a PWMController.
+ * Tries to re-use a timer, if this is not possible will create a new timer. And creates a new channel
+ */
+bool PWMController::begin(const PwmFactoryDecorator& oFactory, int iPinNr, uint32_t uiFreqHz, double dDuty, bool bInvertOutput /*= false*/) {
+	//MDO_SERVO_DEBUG_PRINTLN("PWMController::begin");
+	
+	cleanUp();	//just in case
+
+	if ((dDuty < 0.0) || (dDuty > 1.0)) {
+		MDO_SERVO_DEBUG_PRINTLN("Invalid duty cycle parameter");
+		return false;
+	}
+
+	setTimer(oFactory.createTimer(uiFreqHz, 0));
+	if (m_spTimer != nullptr) {
+		uint32_t uiDuty = 0;
+		int iHighPoint = 0;
+		dutyToInt(dDuty, uiDuty, iHighPoint);
+		
+		m_spChannel = oFactory.createChannel(iPinNr, m_spTimer.get(), uiDuty, iHighPoint, bInvertOutput);
+	}
+	
+	bool bOk = (m_spTimer != nullptr) && (m_spChannel != nullptr);
+
+	if (bOk) {
+		Esp32LedcRegistry::instance()->registerPwmController(this);
+	} else {
+		cleanUp();
+		MDO_SERVO_DEBUG_PRINTLN("PWMController::begin - failed to allocate/configure a timer and/or channel");
+	}
+
+	return bOk;
+}
+
+PWMController::PWMController() {
 }
 
 PWMController::~PWMController() {
+	//note that here we can also *be* a ServoController
+	//in that case, the Registry will just ignore our unregister request
+	Esp32LedcRegistry::instance()->unregisterPwmController(this);
 	cleanUp();
 }
 

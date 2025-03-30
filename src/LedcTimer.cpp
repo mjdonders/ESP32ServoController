@@ -149,19 +149,21 @@ uint32_t LedcTimer::getSourceClockFrequency(uint8_t uiClockSource /*= 0*/) const
 	
 	if (uiClockSource == 0) {
 		uint8_t uiSlowClockSource = getClockSource();
+#if SOC_LEDC_SUPPORT_APB_CLOCK		
 		if (uiSlowClockSource == LEDC_APB_CLK) {
 			uiClockSource = SOC_MOD_CLK_APB;
 		}
+#endif		
 #ifdef SOC_LEDC_SUPPORT_REF_TICK		
-		else if (uiSlowClockSource == LEDC_REF_TICK) {
+		if (uiSlowClockSource == LEDC_REF_TICK) {
 			uiClockSource = SOC_MOD_CLK_REF_TICK;
 		}
 #endif
-		else if (uiSlowClockSource == LEDC_SLOW_CLK_RC_FAST) {
+		if (uiSlowClockSource == LEDC_SLOW_CLK_RC_FAST) {
 			uiClockSource = SOC_MOD_CLK_RC_FAST;
 		}
 #if SOC_LEDC_SUPPORT_XTAL_CLOCK		
-		else if (uiSlowClockSource == LEDC_SLOW_CLK_XTAL) {
+		if (uiSlowClockSource == LEDC_SLOW_CLK_XTAL) {
 			uiClockSource = SOC_MOD_CLK_XTAL;
 		}
 #endif

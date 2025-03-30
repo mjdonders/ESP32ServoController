@@ -80,7 +80,11 @@ void HighSpeedFactory::setClockSource(enum LedcTimerHighSpeed::LedcTimerHighSpee
 }
 
 HighSpeedFactory::HighSpeedFactory() {
+#if SOC_LEDC_SUPPORT_APB_CLOCK		
 	m_eClockSource = LedcTimerHighSpeed::LedcTimerHighSpeed_Source_t::FAST_CLOCK_SOURCE_APB_CLK;
+#else
+	m_eClockSource = LedcTimerHighSpeed::LedcTimerHighSpeed_Source_t::FAST_CLOCK_SOURCE_PLL;
+#endif
 
 #if SOC_LEDC_SUPPORT_HS_MODE				//doing this here in order to avoid a lot of ifdef's in the rest of the code
 	m_eSpeedMode = LEDC_HIGH_SPEED_MODE;

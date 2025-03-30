@@ -80,7 +80,11 @@ void LowSpeedFactory::setClockSource(enum LedcTimerLowSpeed::LedcTimerLowSpeed_S
 }
 
 LowSpeedFactory::LowSpeedFactory() {
+#if SOC_LEDC_SUPPORT_APB_CLOCK	
 	m_eClockSource = LedcTimerLowSpeed::LedcTimerLowSpeed_Source_t::SLOW_CLOCK_SOURCE_APB;
+#else
+	m_eClockSource = LedcTimerLowSpeed::LedcTimerLowSpeed_Source_t::SLOW_CLOCK_SOURCE_XTAL;
+#endif	
 	m_eSpeedMode = LEDC_LOW_SPEED_MODE;
 }
 
