@@ -25,7 +25,7 @@ Both _PWMController_ and _ServoController_ therefore require some guidance on wh
  - _PwmFactoryDecorator_: wraps one of the above _Esp32LedcFactory_ instances, with the goal of sharing a timer with another _PWMController_ if possible.
 
 The easy option is therefor to use a _PwmFactoryDecorator_ with a _BestAvailableFactory_ in the case that there are no specific requirements.
-See *PwmControllerShared* in (Examples)[#Examples].
+See *PwmControllerShared* in [Examples](#Examples).
 
 ## ServoController
 For the `ServoController.begin`, a _ServoFactoryDecorator_ is created.
