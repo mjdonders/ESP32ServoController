@@ -477,6 +477,14 @@ uint8_t Esp32LedcRegistry::getMaxTimerResolutionBits() const {
 	return m_uiMaxTimerResolutionBits;
 }
 
+ledc_sleep_mode_t Esp32LedcRegistry::getSleepPowerMode() const {
+	return m_eSleepPowerMode;
+}
+
+void Esp32LedcRegistry::setSleepPowerMode(ledc_sleep_mode_t eSleepPowerMode) {
+	m_eSleepPowerMode = eSleepPowerMode;
+}
+
 bool Esp32LedcRegistry::setServoParams(uint32_t uiMinPos_usec /*= 1000*/, uint32_t uiMaxPos_usec /*= 2000*/, uint32_t uiFreqHz /*= 50*/, bool bLimitCheck /*= true*/) {
 	bool bOk = true;
 	
@@ -528,6 +536,7 @@ Esp32LedcRegistry::Esp32LedcRegistry() {
 	m_uiServoMinPos_usec = 1000;
 	m_uiServoMaxPos_usec = 2000;
 	
+	m_eSleepPowerMode = LEDC_SLEEP_MODE_NO_ALIVE_NO_PD;	//The default mode: no LEDC output, and no power off the LEDC power domain.
 }
 
 Esp32LedcRegistry::~Esp32LedcRegistry() {

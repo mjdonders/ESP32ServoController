@@ -6,6 +6,8 @@
 #include <vector>
 #include <map>
 
+#include <driver/ledc.h>
+
 namespace MDO {
 namespace ESP32ServoController {
 	
@@ -82,7 +84,9 @@ class Esp32LedcRegistry {
 		
 		uint32_t					m_uiServoFreqHz;
 		uint32_t					m_uiServoMinPos_usec; 
-		uint32_t					m_uiServoMaxPos_usec;	
+		uint32_t					m_uiServoMaxPos_usec;
+		
+		ledc_sleep_mode_t			m_eSleepPowerMode;
 	
 	private:
 		std::shared_ptr<LedcTimer>	findTimerIn(const pwmcontroller_t* pPwmControllers, uint32_t uiFreqHz) const;
@@ -134,6 +138,8 @@ class Esp32LedcRegistry {
 		uint8_t						getNrOfChannels() const;
 		uint8_t						getMaxTimerResolutionBits() const;	
 	
+		ledc_sleep_mode_t			getSleepPowerMode() const;
+		void						setSleepPowerMode(ledc_sleep_mode_t eSleepPowerMode);
 		
 		bool						setServoParams(uint32_t uiMinPos_usec = 1000, uint32_t uiMaxPos_usec = 2000, uint32_t uiFreqHz = 50, bool bLimitCheck = true);
 		void						begin(uint8_t uiNrOfHighSpeedTimers, uint8_t uiNrOfLowSpeedTimers, uint8_t uiNrOfSimultaneousClockSources, uint8_t uiNrOfChannels, uint8_t uiMaxTimerResolutionBits);

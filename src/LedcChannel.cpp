@@ -78,7 +78,7 @@ bool LedcChannel::configure(int iPinNr, LedcTimer* pTimer, uint32_t uiDuty, int 
 	sConfig.timer_sel			= (ledc_timer_t)pTimer->getTimerNr();
 	sConfig.duty				= uiDuty;
 	sConfig.hpoint				= iHighPoint;
-	//sConfig.sleep_mode	//TODO?
+	sConfig.sleep_mode			= Esp32LedcRegistry::instance()->getSleepPowerMode();
 	sConfig.flags.output_invert	= bInvertOutput ? 1:0;
 	
 	bool bOk = ledc_channel_config(&sConfig) == ESP_OK;
